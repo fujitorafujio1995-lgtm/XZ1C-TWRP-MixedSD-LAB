@@ -27,59 +27,25 @@ jobs:
 
       - name: Download official Magisk APK
         run: |
-          python3 - <<'PY'
-          import json
-          import urllib.request
+          curl -L --fail --retry 3 \
+            -o Magisk-v30.7.apk \
+            https://github.com/topjohnwu/Magisk/releases/download/v30.7/Magisk-v30.7.apk
 
-          url = "https://api.github.com/repos/topjohnwu/Magisk/releases/latest"
+          test -s Magisk-v30.7.apk
 
-          req = urllib.request.Request(
-              url,
-              headers={
-                  "Accept": "application/vnd.github+json",
-                  "User-Agent": "XZ1C-TWRP-MixedSD-LAB"
-              }
-          )
+          echo "===== MAGISKBOOT ASSET ====="
+          unzip -l Magisk-v30.7.apk | grep 'lib/x86_64/libmagiskboot.so'
 
-          with urllib.request.urlopen(req) as r:
-              release = json.load(r)
+          echo "===== EXTRACT MAGISKBOOT ====="
+          unzip -p Magisk-v30.7.apk \
+            lib/x86_64/libmagiskboot.so > magiskboot
 
-          print("Release:", release["tag_name"])
+          chmod +x magiskboot
 
-          assets = release.get("assets", [])
-
-          for a in assets:
-              print("Asset:", a["name"])
-
-          apk = next(
-              (a for a in assets if a["name"].lower().endswith(".apk")),
-              None
-          )
-
-          if apk is None:
-              raise SystemExit("No APK asset found in latest Magisk release")
-
-          print("Selected APK:", apk["name"])
-          print("Download:", apk["browser_download_url"])
-
-          with urllib.request.urlopen(
-              urllib.request.Request(
-                  apk["browser_download_url"],
-                  headers={
-                      "User-Agent": "XZ1C-TWRP-MixedSD-LAB"
-                  }
-              )
-          ) as r, open("Magisk.apk", "wb") as f:
-              f.write(r.read())
-          PY
-
-          test -s Magisk.apk
-
-          echo "===== APK CONTENT ====="
-          unzip -l Magisk.apk | grep -E 'magiskboot|lib/.*/.*magiskboot' || true
-
-          echo "===== APK SIZE ====="
-          stat -c '%s bytes' Magisk.apk
+          echo "===== VERIFY MAGISKBOOT ====="
+          test -s magiskboot
+          file magiskboot
+          ./magiskboot unpack --help >/dev/null 2>&1 || true
 
       - name: Inspect golden image
         run: |
