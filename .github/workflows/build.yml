@@ -1,0 +1,71 @@
+name: Build XZ1C TWRP Mixed SD LAB
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 cpio gzip file
+
+      - name: Verify golden base image
+        run: |
+          echo "260e8a41cd1e58d19b199bb0bf04aeef6ad63739dc31c8170f5bd474c0191a1a  base/twrp-3.7.1_12-0-20250728-lilac.img" | sha256sum -c -
+
+      - name: Download official MagiskBoot
+        run: |
+          curl -L --fail --retry 3 \
+            -o magiskboot \
+            https://github.com/topjohnwu/Magisk/releases/latest/download/magiskboot_linux_x86_64
+          chmod +x magiskboot
+          ./magiskboot --help >/dev/null
+
+      - name: Inspect golden image
+        run: |
+          file base/twrp-3.7.1_12-0-20250728-lilac.img
+          python3 - <<'PY'
+          import struct
+          p='base/twrp-3.7.1_12-0-20250728-lilac.img'
+          d=open(p,'rb').read(4096)
+          assert d[:8] == b'ANDROID!'
+          vals=struct.unpack_from('<9I', d, 8)
+          print('header fields:', vals)
+          PY
+
+      - name: Patch and repack
+        run: |
+          rm -rf out work
+          mkdir -p out
+          ./scripts/patch_image.sh \
+            "$PWD/magiskboot" \
+            "$PWD/base/twrp-3.7.1_12-0-20250728-lilac.img" \
+            "$PWD/out" \
+            "$PWD"
+
+      - name: Verify output exists and differs from base
+        run: |
+          test -s out/XZ1C-TWRP-MixedSD-v1-LAB.img
+          sha256sum out/XZ1C-TWRP-MixedSD-v1-LAB.img
+          test "$(sha256sum out/XZ1C-TWRP-MixedSD-v1-LAB.img | cut -d' ' -f1)" != "260e8a41cd1e58d19b199bb0bf04aeef6ad63739dc31c8170f5bd474c0191a1a"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: xz1c-twrp-mixedsd-v1-lab
+          name: XZ1C TWRP Mixed SD v1 LAB
+          generate_release_notes: false
+          files: |
+            out/XZ1C-TWRP-MixedSD-v1-LAB.img
+            out/XZ1C-TWRP-MixedSD-v1-LAB.img.sha256
