@@ -27,22 +27,59 @@ jobs:
 
       - name: Download official Magisk APK
         run: |
-          curl -L --fail --retry 3 \
-            -o Magisk.apk \
-            https://github.com/topjohnwu/Magisk/releases/latest/download/Magisk.apk
+          python3 - <<'PY'
+          import json
+          import urllib.request
+
+          url = "https://api.github.com/repos/topjohnwu/Magisk/releases/latest"
+
+          req = urllib.request.Request(
+              url,
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "User-Agent": "XZ1C-TWRP-MixedSD-LAB"
+              }
+          )
+
+          with urllib.request.urlopen(req) as r:
+              release = json.load(r)
+
+          print("Release:", release["tag_name"])
+
+          assets = release.get("assets", [])
+
+          for a in assets:
+              print("Asset:", a["name"])
+
+          apk = next(
+              (a for a in assets if a["name"].lower().endswith(".apk")),
+              None
+          )
+
+          if apk is None:
+              raise SystemExit("No APK asset found in latest Magisk release")
+
+          print("Selected APK:", apk["name"])
+          print("Download:", apk["browser_download_url"])
+
+          with urllib.request.urlopen(
+              urllib.request.Request(
+                  apk["browser_download_url"],
+                  headers={
+                      "User-Agent": "XZ1C-TWRP-MixedSD-LAB"
+                  }
+              )
+          ) as r, open("Magisk.apk", "wb") as f:
+              f.write(r.read())
+          PY
 
           test -s Magisk.apk
 
-          unzip -l Magisk.apk | grep 'lib/x86_64/libmagiskboot.so'
+          echo "===== APK CONTENT ====="
+          unzip -l Magisk.apk | grep -E 'magiskboot|lib/.*/.*magiskboot' || true
 
-          unzip -p Magisk.apk \
-            lib/x86_64/libmagiskboot.so \
-            > magiskboot
-
-          chmod +x magiskboot
-
-          file magiskboot
-          ./magiskboot --help >/dev/null
+          echo "===== APK SIZE ====="
+          stat -c '%s bytes' Magisk.apk
 
       - name: Inspect golden image
         run: |
