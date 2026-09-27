@@ -11,6 +11,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-22.04
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -18,29 +19,48 @@ jobs:
       - name: Install host tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3 cpio gzip file
+          sudo apt-get install -y python3 cpio gzip file unzip
 
       - name: Verify golden base image
         run: |
           echo "260e8a41cd1e58d19b199bb0bf04aeef6ad63739dc31c8170f5bd474c0191a1a  base/twrp-3.7.1_12-0-20250728-lilac.img" | sha256sum -c -
 
-      - name: Download official MagiskBoot
+      - name: Download official Magisk APK
         run: |
           curl -L --fail --retry 3 \
-            -o magiskboot \
-            https://github.com/topjohnwu/Magisk/releases/latest/download/magiskboot_linux_x86_64
+            -o Magisk.apk \
+            https://github.com/topjohnwu/Magisk/releases/latest/download/Magisk.apk
+
+          test -s Magisk.apk
+
+          unzip -l Magisk.apk | grep 'lib/x86_64/libmagiskboot.so'
+
+          unzip -p Magisk.apk \
+            lib/x86_64/libmagiskboot.so \
+            > magiskboot
+
           chmod +x magiskboot
+
+          file magiskboot
           ./magiskboot --help >/dev/null
 
       - name: Inspect golden image
         run: |
           file base/twrp-3.7.1_12-0-20250728-lilac.img
+
           python3 - <<'PY'
           import struct
-          p='base/twrp-3.7.1_12-0-20250728-lilac.img'
-          d=open(p,'rb').read(4096)
+
+          p = 'base/twrp-3.7.1_12-0-20250728-lilac.img'
+
+          with open(p, 'rb') as f:
+              d = f.read(4096)
+
           assert d[:8] == b'ANDROID!'
-          vals=struct.unpack_from('<9I', d, 8)
+
+          vals = struct.unpack_from('<9I', d, 8)
+
+          print('ANDROID boot header detected')
           print('header fields:', vals)
           PY
 
@@ -48,6 +68,7 @@ jobs:
         run: |
           rm -rf out work
           mkdir -p out
+
           ./scripts/patch_image.sh \
             "$PWD/magiskboot" \
             "$PWD/base/twrp-3.7.1_12-0-20250728-lilac.img" \
@@ -57,8 +78,17 @@ jobs:
       - name: Verify output exists and differs from base
         run: |
           test -s out/XZ1C-TWRP-MixedSD-v1-LAB.img
+
+          echo "Output SHA-256:"
           sha256sum out/XZ1C-TWRP-MixedSD-v1-LAB.img
-          test "$(sha256sum out/XZ1C-TWRP-MixedSD-v1-LAB.img | cut -d' ' -f1)" != "260e8a41cd1e58d19b199bb0bf04aeef6ad63739dc31c8170f5bd474c0191a1a"
+
+          BASE_SHA="260e8a41cd1e58d19b199bb0bf04aeef6ad63739dc31c8170f5bd474c0191a1a"
+          OUT_SHA="$(sha256sum out/XZ1C-TWRP-MixedSD-v1-LAB.img | cut -d' ' -f1)"
+
+          test "$OUT_SHA" != "$BASE_SHA"
+
+          echo "$OUT_SHA  out/XZ1C-TWRP-MixedSD-v1-LAB.img" \
+            > out/XZ1C-TWRP-MixedSD-v1-LAB.img.sha256
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
