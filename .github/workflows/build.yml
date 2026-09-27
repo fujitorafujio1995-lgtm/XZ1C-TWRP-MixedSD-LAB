@@ -1,18 +1,61 @@
-name: XZ1C TWRP MixedSD v2.3 LAB
+name: XZ1C TWRP MixedSD v2.4 LAB
+
 on:
   workflow_dispatch:
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read
+
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+
     steps:
-      - uses: actions/checkout@v4
-      - name: Build
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install host tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3 cpio gzip file unzip
+
+      - name: Verify golden base image
+        run: |
+          echo "260e8a41cd1e58d19b199bb0bf04aeef6ad63739dc31c8170f5bd474c0191a1a  base/twrp-3.7.1_12-0-20250728-lilac.img" | sha256sum -c -
+
+      - name: Download official Magisk v30.7
+        run: |
+          curl -L --fail --retry 3 \
+            -o Magisk-v30.7.apk \
+            https://github.com/topjohnwu/Magisk/releases/download/v30.7/Magisk-v30.7.apk
+
+          test -s Magisk-v30.7.apk
+
+          echo "===== MAGISKBOOT ASSET ====="
+          unzip -l Magisk-v30.7.apk | grep 'lib/x86_64/libmagiskboot.so'
+
+          echo "===== EXTRACT MAGISKBOOT ====="
+          unzip -p Magisk-v30.7.apk \
+            lib/x86_64/libmagiskboot.so > magiskboot
+
+          chmod +x magiskboot
+          test -s magiskboot
+          file magiskboot
+
+      - name: Build v2.4
         run: |
           chmod +x scripts/*.sh patches/*.py
-          sudo apt-get update
-          sudo apt-get install -y cpio gzip python3
-          scripts/patch_image.sh base/twrp-3.7.1_12-0-20250728-lilac.img XZ1C-TWRP-MixedSD-v2.3-LAB.img
-      - uses: actions/upload-artifact@v4
+
+          scripts/patch_image.sh \
+            "$PWD/magiskboot" \
+            "$PWD/base/twrp-3.7.1_12-0-20250728-lilac.img" \
+            "$PWD/XZ1C-TWRP-MixedSD-v2.4-LAB.img" \
+            "$PWD"
+
+      - name: Upload v2.4 artifact
+        uses: actions/upload-artifact@v4
         with:
-          name: XZ1C-TWRP-MixedSD-v2.3-LAB
-          path: XZ1C-TWRP-MixedSD-v2.3-LAB.img
+          name: XZ1C-TWRP-MixedSD-v2.4-LAB
+          path: XZ1C-TWRP-MixedSD-v2.4-LAB.img
