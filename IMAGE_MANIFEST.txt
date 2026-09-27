@@ -1,15 +1,4 @@
-Base image
-----------
-Filename: twrp-3.7.1_12-0-20250728-lilac.img
-SHA256: 260e8a41cd1e58d19b199bb0bf04aeef6ad63739dc31c8170f5bd474c0191a1a
-Target: Sony Xperia XZ1 Compact (lilac)
-TWRP: 3.7.1_12-0
-Build date in filename: 2025-07-28
-
-Observed Android boot image header:
-- magic: ANDROID!
-- header version: 0
-- page size: 4096
-- kernel size: 15683060 bytes
-- ramdisk size: 23380836 bytes
-- dt size: 0
+Base: TWRP 3.7.1_12-0-20250728-lilac
+Base SHA256: 260e8a41cd1e58d19b199bb0bf04aeef6ad63739dc31c8170f5bd474c0191a1a
+UI: Partition the memory card
+Hard-coded 64/55 GiB: removed

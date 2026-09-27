@@ -1,27 +1,8 @@
-#!/system/bin/sh
-set -u
-DEV=/dev/block/mmcblk0
-
-echo "XZ1C Mixed SD LAB inspection"
-echo "Device: $DEV"
-
-if [ ! -b "$DEV" ]; then
-  echo "ERROR: removable SD block device not found"
-  exit 1
-fi
-
-SIZE=$(blockdev --getsize64 "$DEV" 2>/dev/null || echo 0)
-echo "Bytes: $SIZE"
-if [ "$SIZE" -gt 0 ]; then
-  awk -v s="$SIZE" 'BEGIN {printf "GiB: %.2f\\n", s/1024/1024/1024}'
-fi
-
-echo "--- GPT ---"
-if [ -x /system/bin/sgdisk ]; then
-  /system/bin/sgdisk -p "$DEV" || true
-else
-  echo "sgdisk not available in recovery"
-fi
-
-echo "NO PARTITION WAS MODIFIED"
-exit 0
+#!/sbin/sh
+DEV="${XZ1C_SD_DEV:-/dev/block/mmcblk0}"
+echo "device=$DEV"
+blockdev --getss "$DEV" 2>/dev/null || true
+blockdev --getsize64 "$DEV" 2>/dev/null || true
+sgdisk -p "$DEV" 2>&1 || true
+blkid "$DEV" "${DEV}p1" "${DEV}p2" "${DEV}p3" 2>/dev/null || true
+ls -l /data/misc_de/0/expand_*.key 2>/dev/null || true
