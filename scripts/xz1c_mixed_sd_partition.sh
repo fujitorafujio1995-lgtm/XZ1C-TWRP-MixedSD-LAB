@@ -91,7 +91,7 @@ calc_region()
 
     END=$((CUR + SIZE_SECTORS - 1))
 
-    [ "$END" -lt "$LAST_USABLE" ] || {
+    [ "$END" -le "$LAST_USABLE" ] || {
         echo "Layout exceeds safe SD boundary"
         exit 1
     }
@@ -158,6 +158,36 @@ fi
 
 if [ "$SWAP_NUM" -gt 0 ]; then
     [ "$SWAP_END" -le "$LAST_USABLE" ] || exit 1
+fi
+
+# ------------------------------------------------------------
+# REQUIRED TOOLS — must pass before any destructive operation.
+# ------------------------------------------------------------
+
+command -v sgdisk >/dev/null 2>&1 || {
+    echo "ERROR: sgdisk is missing; SD will not be modified."
+    exit 1
+}
+
+if [ "$PUBLIC" -gt 0 ]; then
+    command -v mkexfatfs >/dev/null 2>&1 || {
+        echo "ERROR: mkexfatfs is missing; SD will not be modified."
+        exit 1
+    }
+fi
+
+if [ "$APP" -gt 0 ]; then
+    command -v mkfs.f2fs >/dev/null 2>&1 || {
+        echo "ERROR: mkfs.f2fs is missing; SD will not be modified."
+        exit 1
+    }
+fi
+
+if [ "$SWAP" -gt 0 ]; then
+    command -v mkswap >/dev/null 2>&1 || {
+        echo "ERROR: mkswap is missing; SD will not be modified."
+        exit 1
+    }
 fi
 
 # ------------------------------------------------------------

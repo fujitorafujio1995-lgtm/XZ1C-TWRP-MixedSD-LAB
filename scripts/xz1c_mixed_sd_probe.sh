@@ -220,7 +220,7 @@ if [ "$LAYOUT" = "mixed" ]; then
     if [ "$EXIST_APP" -eq 1 ]; then
         APP_SECTORS="$(
             echo "$GPT_OUT" |
-            awk '$0 ~ /XZ1C_APP/ {print $4; exit}'
+            awk '$0 ~ /XZ1C_APP/ {print ($3 - $2 + 1); exit}'
         )"
         case "$APP_SECTORS" in
             ''|*[!0-9]*) APP_SECTORS=0;;
@@ -231,7 +231,7 @@ if [ "$LAYOUT" = "mixed" ]; then
     if [ "$EXIST_PUBLIC" -eq 1 ]; then
         PUB_SECTORS="$(
             echo "$GPT_OUT" |
-            awk '$0 ~ /XZ1C_DOWNLOAD/ {print $4; exit}'
+            awk '$0 ~ /XZ1C_DOWNLOAD/ {print ($3 - $2 + 1); exit}'
         )"
         case "$PUB_SECTORS" in
             ''|*[!0-9]*) PUB_SECTORS=0;;
@@ -242,7 +242,7 @@ if [ "$LAYOUT" = "mixed" ]; then
     if [ "$EXIST_SWAP" -eq 1 ]; then
         SWAP_SECTORS="$(
             echo "$GPT_OUT" |
-            awk '$0 ~ /XZ1C_SWAP/ {print $4; exit}'
+            awk '$0 ~ /XZ1C_SWAP/ {print ($3 - $2 + 1); exit}'
         )"
         case "$SWAP_SECTORS" in
             ''|*[!0-9]*) SWAP_SECTORS=0;;
