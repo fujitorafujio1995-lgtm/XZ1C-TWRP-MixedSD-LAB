@@ -80,21 +80,21 @@ vars_xml = r"""
 
 <!-- MixedSD portrait-only Y coordinates -->
 <variable name="tw_mixed_app_label_y" value="832"/>
-<variable name="tw_mixed_app_slider_y" value="872"/>
-<variable name="tw_mixed_app_input_y" value="912"/>
+<variable name="tw_mixed_app_slider_y" value="900"/>
+<variable name="tw_mixed_app_input_y" value="968"/>
 
-<variable name="tw_mixed_public_label_y" value="1000"/>
-<variable name="tw_mixed_public_slider_y" value="1040"/>
-<variable name="tw_mixed_public_input_y" value="1080"/>
+<variable name="tw_mixed_public_label_y" value="1080"/>
+<variable name="tw_mixed_public_slider_y" value="1148"/>
+<variable name="tw_mixed_public_input_y" value="1216"/>
 
-<variable name="tw_mixed_swap_label_y" value="1168"/>
-<variable name="tw_mixed_swap_slider_y" value="1208"/>
-<variable name="tw_mixed_swap_input_y" value="1248"/>
+<variable name="tw_mixed_swap_label_y" value="1328"/>
+<variable name="tw_mixed_swap_slider_y" value="1396"/>
+<variable name="tw_mixed_swap_input_y" value="1464"/>
 
-<variable name="tw_mixed_selected_y" value="1320"/>
-<variable name="tw_mixed_unallocated_y" value="1356"/>
+<variable name="tw_mixed_selected_y" value="1540"/>
+<variable name="tw_mixed_unallocated_y" value="1580"/>
 
-<variable name="tw_mixed_buttons_y" value="1600"/>
+<variable name="tw_mixed_buttons_y" value="1680"/>
 <variable name="tw_xz1c_sd_selected_gib" value="0"/>
 <variable name="tw_xz1c_sd_unallocated_gib" value="0"/>
 """
