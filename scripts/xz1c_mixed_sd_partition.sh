@@ -1,219 +1,242 @@
-#!/system/bin/sh
+#!/sbin/sh
 set -eu
 
 DEV="${XZ1C_SD_DEV:-/dev/block/mmcblk0}"
-
-APP="${1:-}"
-PUBLIC="${2:-}"
-SWAP="${3:-}"
-FS="${4:-f2fs}"
+APP="${1:-0}"
+PUBLIC="${2:-0}"
+SWAP="${3:-0}"
 
 [ -b "$DEV" ] || {
-    echo "SD block device not found: $DEV"
-    exit 1
-}
-
-[ -n "$APP" ] && [ -n "$PUBLIC" ] && [ -n "$SWAP" ] || {
-    echo "Missing region sizes"
-    exit 1
-}
-
-[ "$FS" = "f2fs" ] || {
-    echo "App/Internal filesystem is fixed to F2FS"
+    echo "SD card not found: $DEV"
     exit 1
 }
 
 case "$APP:$PUBLIC:$SWAP" in
     *[!0-9:]*)
-        echo "Region sizes must be non-negative integers"
+        echo "Invalid region sizes"
         exit 1
         ;;
 esac
 
 SECTOR="$(blockdev --getss "$DEV")"
 BYTES="$(blockdev --getsize64 "$DEV")"
-SECTORS="$(blockdev --getsz "$DEV")"
 
-[ "$SECTOR" -eq 512 ] || {
-    echo "Unexpected sector size: $SECTOR"
-    exit 1
-}
-
-TOTAL_GIB=$((BYTES / 1073741824))
-REQUESTED_GIB=$((APP + PUBLIC + SWAP))
-
-# The three user-controlled regions must consume the complete
-# allocation reported by the probe.
-[ "$REQUESTED_GIB" -eq "$TOTAL_GIB" ] || {
-    echo "Region total must equal usable allocation"
-    echo "Requested: ${REQUESTED_GIB} GiB"
-    echo "Capacity:  ${TOTAL_GIB} GiB"
-    exit 1
-}
-
-# At least one user region must be enabled.
-[ "$APP" -gt 0 ] || [ "$PUBLIC" -gt 0 ] || [ "$SWAP" -gt 0 ] || {
-    echo "At least one region must be enabled"
-    exit 1
-}
-
-META_BYTES=$((16 * 1024 * 1024))
-META_SECTORS=$((META_BYTES / SECTOR))
-
+GIB=$((1024 * 1024 * 1024))
 FIRST=2048
 GPT_RESERVED=34
-LAST_USABLE=$((SECTORS - GPT_RESERVED - 1))
+META_BYTES=$((16 * 1024 * 1024))
 
-PUBLIC_SECTORS=$((PUBLIC * 1073741824 / SECTOR))
-APP_SECTORS=$((APP * 1073741824 / SECTOR))
-SWAP_SECTORS=$((SWAP * 1073741824 / SECTOR))
+SECTORS=$((BYTES / SECTOR))
 
-# Check required programs BEFORE any destructive command.
-command -v sgdisk >/dev/null 2>&1 || {
-    echo "sgdisk missing"
+case "$DEV" in
+    /dev/block/mmcblk[0-9]*)
+        PART_PREFIX="${DEV}p"
+        ;;
+    *)
+        PART_PREFIX="${DEV}"
+        ;;
+esac
+LAST_USABLE=$((SECTORS - GPT_RESERVED))
+
+# The 16 MiB hidden android_meta reservation is included exactly once here.
+USER_BYTES=$((BYTES - FIRST * SECTOR - GPT_RESERVED * SECTOR - META_BYTES))
+
+[ "$USER_BYTES" -gt 0 ] || {
+    echo "SD card is too small"
     exit 1
 }
 
-if [ "$PUBLIC" -gt 0 ]; then
-    command -v mkexfatfs >/dev/null 2>&1 || {
-        echo "mkexfatfs missing"
-        exit 1
-    }
-fi
+TOTAL_GIB=$((USER_BYTES / GIB))
+REQUESTED_GIB=$((APP + PUBLIC + SWAP))
 
-if [ "$APP" -gt 0 ]; then
-    command -v mkfs.f2fs >/dev/null 2>&1 || {
-        echo "mkfs.f2fs missing"
-        exit 1
-    }
-fi
-
-if [ "$SWAP" -gt 0 ]; then
-    command -v mkswap >/dev/null 2>&1 || {
-        echo "mkswap missing"
-        exit 1
-    }
-fi
-
-# Build sector layout.
-#
-# P1 = Public/exFAT when enabled
-# P2 = hidden android_meta, always 16 MiB
-# P3 = App/Internal F2FS when enabled
-# P4 = Swap when enabled
-#
-# Disabled user regions are simply omitted.
-
-P=1
-if [ "$PUBLIC" -gt 0 ]; then
-    P1_START="$FIRST"
-    P1_END=$((P1_START + PUBLIC_SECTORS - 1))
-    P=$((P + 1))
-else
-    P1_START=0
-    P1_END=0
-fi
-
-META_NUM="$P"
-P2_START=$(( ${P1_END:-$((FIRST - 1))} + 1 ))
-P2_END=$((P2_START + META_SECTORS - 1))
-P=$((P + 1))
-
-if [ "$APP" -gt 0 ]; then
-    APP_NUM="$P"
-    APP_START=$((P2_END + 1))
-    APP_END=$((APP_START + APP_SECTORS - 1))
-    P=$((P + 1))
-else
-    APP_NUM=0
-    APP_START=0
-    APP_END=0
-fi
-
-if [ "$SWAP" -gt 0 ]; then
-    SWAP_NUM="$P"
-    SWAP_START=$((P2_END + 1))
-    if [ "$APP" -gt 0 ]; then
-        SWAP_START=$((APP_END + 1))
-    fi
-    SWAP_END=$((SWAP_START + SWAP_SECTORS - 1))
-else
-    SWAP_NUM=0
-    SWAP_START=0
-    SWAP_END=0
-fi
-
-# Validate final layout BEFORE wiping.
-LAST=0
-if [ "$PUBLIC" -gt 0 ]; then
-    LAST="$P1_END"
-fi
-if [ "$APP" -gt 0 ]; then
-    LAST="$APP_END"
-fi
-if [ "$SWAP" -gt 0 ]; then
-    LAST="$SWAP_END"
-fi
-
-[ "$LAST" -le "$LAST_USABLE" ] || {
-    echo "GPT layout does not fit"
+# User regions may use less than MAX.
+[ "$REQUESTED_GIB" -le "$TOTAL_GIB" ] || {
+    echo "Requested ${REQUESTED_GIB} GiB exceeds usable ${TOTAL_GIB} GiB"
     exit 1
 }
 
-# -------- destructive section begins here --------
+# Do not destroy the SD if the user selected nothing.
+[ "$REQUESTED_GIB" -gt 0 ] || {
+    echo "Enable at least one region"
+    exit 1
+}
+
+CUR="$FIRST"
+NEXT_NUM=1
+
+PUB_NUM=0
+META_NUM=0
+APP_NUM=0
+SWAP_NUM=0
+
+PUB_START=0
+PUB_END=0
+META_START=0
+META_END=0
+APP_START=0
+APP_END=0
+SWAP_START=0
+SWAP_END=0
+
+calc_region()
+{
+    SIZE_BYTES="$1"
+
+    SIZE_SECTORS=$((SIZE_BYTES / SECTOR))
+
+    [ "$SIZE_SECTORS" -gt 0 ] || {
+        echo "Partition size too small"
+        exit 1
+    }
+
+    END=$((CUR + SIZE_SECTORS - 1))
+
+    [ "$END" -lt "$LAST_USABLE" ] || {
+        echo "Layout exceeds safe SD boundary"
+        exit 1
+    }
+
+    CUR=$((END + 1))
+}
+
+# ------------------------------------------------------------
+# PLAN ONLY — no destructive command before all checks finish.
+# ------------------------------------------------------------
+
+if [ "$PUBLIC" -gt 0 ]; then
+    PUB_NUM="$NEXT_NUM"
+    PUB_START="$CUR"
+
+    calc_region $((PUBLIC * GIB))
+
+    PUB_END="$END"
+    NEXT_NUM=$((NEXT_NUM + 1))
+fi
+
+# Hidden metadata is always present.
+META_NUM="$NEXT_NUM"
+META_START="$CUR"
+
+calc_region "$META_BYTES"
+
+META_END="$END"
+NEXT_NUM=$((NEXT_NUM + 1))
+
+if [ "$APP" -gt 0 ]; then
+    APP_NUM="$NEXT_NUM"
+    APP_START="$CUR"
+
+    calc_region $((APP * GIB))
+
+    APP_END="$END"
+    NEXT_NUM=$((NEXT_NUM + 1))
+fi
+
+if [ "$SWAP" -gt 0 ]; then
+    SWAP_NUM="$NEXT_NUM"
+    SWAP_START="$CUR"
+
+    calc_region $((SWAP * GIB))
+
+    SWAP_END="$END"
+    NEXT_NUM=$((NEXT_NUM + 1))
+fi
+
+# Final geometry validation BEFORE destructive operation.
+[ "$META_END" -le "$LAST_USABLE" ] || {
+    echo "android_meta out of bounds"
+    exit 1
+}
+
+if [ "$PUB_NUM" -gt 0 ]; then
+    [ "$PUB_END" -le "$LAST_USABLE" ] || exit 1
+fi
+
+if [ "$APP_NUM" -gt 0 ]; then
+    [ "$APP_END" -le "$LAST_USABLE" ] || exit 1
+fi
+
+if [ "$SWAP_NUM" -gt 0 ]; then
+    [ "$SWAP_END" -le "$LAST_USABLE" ] || exit 1
+fi
+
+# ------------------------------------------------------------
+# DESTRUCTIVE OPERATION STARTS HERE.
+# ------------------------------------------------------------
+
+echo "Creating Mixed SD layout:"
+echo "  App    : ${APP} GiB"
+echo "  Public : ${PUBLIC} GiB"
+echo "  Swap   : ${SWAP} GiB"
+echo "  Free   : $((TOTAL_GIB - REQUESTED_GIB)) GiB"
+echo "  Meta   : 16 MiB hidden"
 
 sgdisk --zap-all "$DEV"
 
-if [ "$PUBLIC" -gt 0 ]; then
+# Create Public first when enabled.
+if [ "$PUB_NUM" -gt 0 ]; then
     sgdisk \
-        --new=1:${P1_START}:${P1_END} \
-        --typecode=1:EBD0A0A2-B9E5-4433-87C0-68B6B72699C7 \
-        --change-name=1:XZ1C_DOWNLOAD \
+        -n "${PUB_NUM}:${PUB_START}:${PUB_END}" \
+        -t "${PUB_NUM}:0700" \
+        -c "${PUB_NUM}:XZ1C_DOWNLOAD" \
         "$DEV"
 fi
 
+# Hidden metadata.
 sgdisk \
-    --new=${META_NUM}:${P2_START}:${P2_END} \
-    --typecode=${META_NUM}:19A710A2-B3CA-11E4-B026-10604B889DCF \
-    --change-name=${META_NUM}:android_meta \
+    -n "${META_NUM}:${META_START}:${META_END}" \
+    -t "${META_NUM}:19D5DF83-11B0-457B-BE2C-7559C13142A5" \
+    -c "${META_NUM}:android_meta" \
     "$DEV"
 
-if [ "$APP" -gt 0 ]; then
+# App/Internal.
+if [ "$APP_NUM" -gt 0 ]; then
     sgdisk \
-        --new=${APP_NUM}:${APP_START}:${APP_END} \
-        --typecode=${APP_NUM}:193D1EA4-B3CA-11E4-B075-10604B889DCF \
-        --change-name=${APP_NUM}:android_ext \
+        -n "${APP_NUM}:${APP_START}:${APP_END}" \
+        -t "${APP_NUM}:8300" \
+        -c "${APP_NUM}:XZ1C_APP" \
         "$DEV"
 fi
 
-if [ "$SWAP" -gt 0 ]; then
+# Swap.
+if [ "$SWAP_NUM" -gt 0 ]; then
     sgdisk \
-        --new=${SWAP_NUM}:${SWAP_START}:${SWAP_END} \
-        --typecode=${SWAP_NUM}:0657FD6D-A4AB-43C4-84E5-0933C84B4F4F \
-        --change-name=${SWAP_NUM}:XZ1C_SWAP \
+        -n "${SWAP_NUM}:${SWAP_START}:${SWAP_END}" \
+        -t "${SWAP_NUM}:8200" \
+        -c "${SWAP_NUM}:XZ1C_SWAP" \
         "$DEV"
 fi
 
-sgdisk --randomize-guids "$DEV"
-sgdisk --verify "$DEV"
+sgdisk --print "$DEV"
 
-# Format only enabled regions.
+if command -v partprobe >/dev/null 2>&1; then
+    partprobe "$DEV" || true
+fi
+
+sleep 1
+
+# Public/exFAT.
 if [ "$PUBLIC" -gt 0 ]; then
-    mkexfatfs -n XZ1C_DOWNLOAD "${DEV}1"
+    mkexfatfs \
+        -n XZ1C_DOWNLOAD \
+        "${PART_PREFIX}${PUB_NUM}"
 fi
 
+# App/F2FS.
 if [ "$APP" -gt 0 ]; then
-    mkfs.f2fs -f "${DEV}${APP_NUM}"
+    mkfs.f2fs -f \
+        "${PART_PREFIX}${APP_NUM}"
 fi
 
+# Swap.
 if [ "$SWAP" -gt 0 ]; then
-    mkswap -L XZ1C_SWAP "${DEV}${SWAP_NUM}"
+    mkswap \
+        -L XZ1C_SWAP \
+        "${PART_PREFIX}${SWAP_NUM}"
 fi
 
-sync
-
-echo "Mixed SD created:"
-echo "Public: ${PUBLIC} GiB"
-echo "App/Internal: ${APP} GiB"
-echo "Swap: ${SWAP} GiB"
-echo "android_meta: 16 MiB"
+echo "Mixed SD configured successfully."
+echo "App=${APP} GiB"
+echo "Public=${PUBLIC} GiB"
+echo "Swap=${SWAP} GiB"
+echo "Unallocated=$((TOTAL_GIB - REQUESTED_GIB)) GiB"
