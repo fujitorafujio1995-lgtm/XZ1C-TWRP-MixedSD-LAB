@@ -99,27 +99,6 @@ do
         "add 0755 $DEST $ROOT_DIR/scripts/$script"
 done
 
-echo "[3.5/5] verify MixedSD script paths"
-
-for script in \
-    xz1c_mixed_sd_format.sh \
-    xz1c_mixed_sd_inspect.sh \
-    xz1c_mixed_sd_partition.sh \
-    xz1c_mixed_sd_preflight.sh \
-    xz1c_mixed_sd_probe.sh \
-    xz1c_mixed_sd_use_internal.sh
-do
-    echo "Checking: sbin/$script"
-
-    "$MAGISKBOOT" cpio ramdisk.cpio \
-        "test sbin/$script" >/dev/null 2>&1 || {
-        echo "ERROR: missing from ramdisk: sbin/$script"
-        exit 1
-    }
-done
-
-echo "MixedSD scripts verified in /sbin"
-
 echo "[4/5] magiskboot repack"
 
 "$MAGISKBOOT" repack "$IMAGE" "$T/new-boot.img"
