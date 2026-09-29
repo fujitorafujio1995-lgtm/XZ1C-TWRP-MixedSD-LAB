@@ -110,7 +110,107 @@ u = u.replace(
 # Only partsdcard is replaced.
 # ----------------------------------------------------------------------
 
-new_page = r"""<page name="partsdcard">
+new_page = r"""
+<page name="mixedsd_app_input">
+<template name="page"/>
+
+<text style="text_l">
+<placement x="%col1_x_header%" y="%row3_header_y%"/>
+<text>App / Internal</text>
+</text>
+
+<text style="text_m">
+<placement x="%col1_x_header%" y="%row4_header_y%"/>
+<text>Enter size in GiB</text>
+</text>
+
+<input>
+<placement x="330" y="430" w="420" h="%input_height%"/>
+<text>%tw_xz1c_sd_app_gib%</text>
+<data name="tw_xz1c_sd_app_gib"/>
+<restrict minlen="1" maxlen="6" allow="0123456789"/>
+<alignment>center</alignment>
+<actions>
+<action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance value app</action>
+<action function="page">partsdcard</action>
+</actions>
+</input>
+
+<template name="keyboardnum"/>
+
+<action>
+<touch key="back"/>
+<action function="page">partsdcard</action>
+</action>
+</page>
+
+<page name="mixedsd_public_input">
+<template name="page"/>
+
+<text style="text_l">
+<placement x="%col1_x_header%" y="%row3_header_y%"/>
+<text>Download / Public</text>
+</text>
+
+<text style="text_m">
+<placement x="%col1_x_header%" y="%row4_header_y%"/>
+<text>Enter size in GiB</text>
+</text>
+
+<input>
+<placement x="330" y="430" w="420" h="%input_height%"/>
+<text>%tw_xz1c_sd_public_gib%</text>
+<data name="tw_xz1c_sd_public_gib"/>
+<restrict minlen="1" maxlen="6" allow="0123456789"/>
+<alignment>center</alignment>
+<actions>
+<action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance value public</action>
+<action function="page">partsdcard</action>
+</actions>
+</input>
+
+<template name="keyboardnum"/>
+
+<action>
+<touch key="back"/>
+<action function="page">partsdcard</action>
+</action>
+</page>
+
+<page name="mixedsd_swap_input">
+<template name="page"/>
+
+<text style="text_l">
+<placement x="%col1_x_header%" y="%row3_header_y%"/>
+<text>Linux Swap</text>
+</text>
+
+<text style="text_m">
+<placement x="%col1_x_header%" y="%row4_header_y%"/>
+<text>Enter size in GiB</text>
+</text>
+
+<input>
+<placement x="330" y="430" w="420" h="%input_height%"/>
+<text>%tw_xz1c_sd_swap_gib%</text>
+<data name="tw_xz1c_sd_swap_gib"/>
+<restrict minlen="1" maxlen="6" allow="0123456789"/>
+<alignment>center</alignment>
+<actions>
+<action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance value swap</action>
+<action function="page">partsdcard</action>
+</actions>
+</input>
+
+<template name="keyboardnum"/>
+
+<action>
+<touch key="back"/>
+<action function="page">partsdcard</action>
+</action>
+</page>
+
+<page name="partsdcard">
 <template name="page"/>
 <text style="text_l"><placement x="%col1_x_header%" y="%row3_header_y%"/><text>Mixed SD Card</text></text>
 <text style="text_m"><placement x="%col1_x_header%" y="%row4_header_y%"/><text>Load SD to read its capacity</text></text>
@@ -120,19 +220,22 @@ new_page = r"""<page name="partsdcard">
 
 <button style="checkbox"><placement x="%indent%" y="%tw_mixed_app_label_y%" textplacement="6"/><text>App / Internal (F2FS): %tw_xz1c_sd_app_gib% GiB</text><condition var1="tw_xz1c_sd_app_on" var2="0"/><image resource="checkbox_false"/><actions><action function="set">tw_xz1c_sd_app_on=1</action><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance toggle app</action><action function="page">partsdcard</action></actions></button>
 <button style="checkbox"><placement x="%indent%" y="%tw_mixed_app_label_y%" textplacement="6"/><text>App / Internal (F2FS): %tw_xz1c_sd_app_gib% GiB</text><condition var1="tw_xz1c_sd_app_on" op="!=" var2="0"/><image resource="checkbox_true"/><actions><action function="set">tw_xz1c_sd_app_on=0</action><action function="set">tw_xz1c_sd_app_gib=0</action><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance toggle app</action><action function="page">partsdcard</action></actions></button>
-<input><condition var1="tw_xz1c_sd_app_on" var2="1"/><placement x="760" y="%tw_mixed_app_label_y%" w="220" h="%input_height%"/><text>%tw_xz1c_sd_app_gib%</text><data name="tw_xz1c_sd_app_gib"/><restrict minlen="1" maxlen="6" allow="0123456789"/><alignment>center</alignment><actions><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance value app</action><action function="page">partsdcard</action></actions></input>
+<text style="text_m"><condition var1="tw_xz1c_sd_app_on" var2="1"/><placement x="760" y="%tw_mixed_app_label_y%" w="220" h="%input_height%"/><text>%tw_xz1c_sd_app_gib%</text></text>
+<button><condition var1="tw_xz1c_sd_app_on" var2="1"/><placement x="760" y="%tw_mixed_app_label_y%" w="220" h="%input_height%"/><actions><action function="page">mixedsd_app_input</action></actions></button>
 <slidervalue><condition var1="tw_xz1c_sd_app_on" var2="1"/><placement x="%indent%" y="%tw_mixed_app_slider_y%" w="%content_width%"/><data variable="tw_xz1c_sd_app_gib" min="0" max="%tw_xz1c_sd_alloc_gib%"/><actions><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance value app</action><action function="page">partsdcard</action></actions></slidervalue>
 
 
 <button style="checkbox"><placement x="%indent%" y="%tw_mixed_public_label_y%" textplacement="6"/><text>Download / Public (exFAT): %tw_xz1c_sd_public_gib% GiB</text><condition var1="tw_xz1c_sd_public_on" var2="0"/><image resource="checkbox_false"/><actions><action function="set">tw_xz1c_sd_public_on=1</action><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance toggle public</action><action function="page">partsdcard</action></actions></button>
 <button style="checkbox"><placement x="%indent%" y="%tw_mixed_public_label_y%" textplacement="6"/><text>Download / Public (exFAT): %tw_xz1c_sd_public_gib% GiB</text><condition var1="tw_xz1c_sd_public_on" op="!=" var2="0"/><image resource="checkbox_true"/><actions><action function="set">tw_xz1c_sd_public_on=0</action><action function="set">tw_xz1c_sd_public_gib=0</action><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance toggle public</action><action function="page">partsdcard</action></actions></button>
-<input><condition var1="tw_xz1c_sd_public_on" var2="1"/><placement x="760" y="%tw_mixed_public_label_y%" w="220" h="%input_height%"/><text>%tw_xz1c_sd_public_gib%</text><data name="tw_xz1c_sd_public_gib"/><restrict minlen="1" maxlen="6" allow="0123456789"/><alignment>center</alignment><actions><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance value public</action><action function="page">partsdcard</action></actions></input>
+<text style="text_m"><condition var1="tw_xz1c_sd_public_on" var2="1"/><placement x="760" y="%tw_mixed_public_label_y%" w="220" h="%input_height%"/><text>%tw_xz1c_sd_public_gib%</text></text>
+<button><condition var1="tw_xz1c_sd_public_on" var2="1"/><placement x="760" y="%tw_mixed_public_label_y%" w="220" h="%input_height%"/><actions><action function="page">mixedsd_public_input</action></actions></button>
 <slidervalue><condition var1="tw_xz1c_sd_public_on" var2="1"/><placement x="%indent%" y="%tw_mixed_public_slider_y%" w="%content_width%"/><data variable="tw_xz1c_sd_public_gib" min="0" max="%tw_xz1c_sd_alloc_gib%"/><actions><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance value public</action><action function="page">partsdcard</action></actions></slidervalue>
 
 
 <button style="checkbox"><placement x="%indent%" y="%tw_mixed_swap_label_y%" textplacement="6"/><text>Swap (Linux swap): %tw_xz1c_sd_swap_gib% GiB</text><condition var1="tw_xz1c_sd_swap_on" var2="0"/><image resource="checkbox_false"/><actions><action function="set">tw_xz1c_sd_swap_on=1</action><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance toggle swap</action><action function="page">partsdcard</action></actions></button>
 <button style="checkbox"><placement x="%indent%" y="%tw_mixed_swap_label_y%" textplacement="6"/><text>Swap (Linux swap): %tw_xz1c_sd_swap_gib% GiB</text><condition var1="tw_xz1c_sd_swap_on" op="!=" var2="0"/><image resource="checkbox_true"/><actions><action function="set">tw_xz1c_sd_swap_on=0</action><action function="set">tw_xz1c_sd_swap_gib=0</action><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance toggle swap</action><action function="page">partsdcard</action></actions></button>
-<input><condition var1="tw_xz1c_sd_swap_on" var2="1"/><placement x="760" y="%tw_mixed_swap_label_y%" w="220" h="%input_height%"/><text>%tw_xz1c_sd_swap_gib%</text><data name="tw_xz1c_sd_swap_gib"/><restrict minlen="1" maxlen="6" allow="0123456789"/><alignment>center</alignment><actions><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance value swap</action><action function="page">partsdcard</action></actions></input>
+<text style="text_m"><condition var1="tw_xz1c_sd_swap_on" var2="1"/><placement x="760" y="%tw_mixed_swap_label_y%" w="220" h="%input_height%"/><text>%tw_xz1c_sd_swap_gib%</text></text>
+<button><condition var1="tw_xz1c_sd_swap_on" var2="1"/><placement x="760" y="%tw_mixed_swap_label_y%" w="220" h="%input_height%"/><actions><action function="page">mixedsd_swap_input</action></actions></button>
 <slidervalue><condition var1="tw_xz1c_sd_swap_on" var2="1"/><placement x="%indent%" y="%tw_mixed_swap_slider_y%" w="%content_width%"/><data variable="tw_xz1c_sd_swap_gib" min="0" max="%tw_xz1c_sd_alloc_gib%"/><actions><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance value swap</action><action function="page">partsdcard</action></actions></slidervalue>
 
 
