@@ -79,19 +79,19 @@ vars_xml = r"""
 <variable name="tw_xz1c_sd_full_mode" value="0"/>
 
 <!-- MixedSD portrait-only Y coordinates -->
-<variable name="tw_mixed_app_label_y" value="620"/>
-<variable name="tw_mixed_app_slider_y" value="760"/>
+<variable name="tw_mixed_app_label_y" value="420"/>
+<variable name="tw_mixed_app_slider_y" value="500"/>
 
-<variable name="tw_mixed_public_label_y" value="940"/>
-<variable name="tw_mixed_public_slider_y" value="1080"/>
+<variable name="tw_mixed_public_label_y" value="700"/>
+<variable name="tw_mixed_public_slider_y" value="780"/>
 
-<variable name="tw_mixed_swap_label_y" value="1260"/>
-<variable name="tw_mixed_swap_slider_y" value="1400"/>
+<variable name="tw_mixed_swap_label_y" value="980"/>
+<variable name="tw_mixed_swap_slider_y" value="1060"/>
 
-<variable name="tw_mixed_selected_y" value="1540"/>
-<variable name="tw_mixed_unallocated_y" value="1580"/>
+<variable name="tw_mixed_selected_y" value="1220"/>
+<variable name="tw_mixed_unallocated_y" value="1260"/>
 
-<variable name="tw_mixed_buttons_y" value="1680"/>
+<variable name="tw_mixed_buttons_y" value="1360"/>
 <variable name="tw_xz1c_sd_selected_gib" value="0"/>
 <variable name="tw_xz1c_sd_unallocated_gib" value="0"/>
 """
@@ -115,8 +115,8 @@ new_page = r"""<page name="partsdcard">
 <text style="text_l"><placement x="%col1_x_header%" y="%row3_header_y%"/><text>Mixed SD Card</text></text>
 <text style="text_m"><placement x="%col1_x_header%" y="%row4_header_y%"/><text>Load SD to read its capacity</text></text>
 
-<text style="text_m"><placement x="%indent%" y="%row8_y%"/><text>Capacity: %tw_xz1c_sd_total_display%</text></text>
-<text style="text_m_accent"><placement x="%indent%" y="%row9a_y%"/><text>%tw_xz1c_sd_status%</text></text>
+<text style="text_m"><placement x="%indent%" y="250"/><text>Capacity: %tw_xz1c_sd_total_display%</text></text>
+<text style="text_m_accent"><placement x="%indent%" y="305"/><text>%tw_xz1c_sd_status%</text></text>
 
 <button style="checkbox"><placement x="%indent%" y="%tw_mixed_app_label_y%" textplacement="6"/><text>App / Internal (F2FS): %tw_xz1c_sd_app_gib% GiB</text><condition var1="tw_xz1c_sd_app_on" var2="0"/><image resource="checkbox_false"/><actions><action function="set">tw_xz1c_sd_app_on=1</action><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance toggle app</action><action function="page">partsdcard</action></actions></button>
 <button style="checkbox"><placement x="%indent%" y="%tw_mixed_app_label_y%" textplacement="6"/><text>App / Internal (F2FS): %tw_xz1c_sd_app_gib% GiB</text><condition var1="tw_xz1c_sd_app_on" op="!=" var2="0"/><image resource="checkbox_true"/><actions><action function="set">tw_xz1c_sd_app_on=0</action><action function="set">tw_xz1c_sd_app_gib=0</action><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh rebalance toggle app</action><action function="page">partsdcard</action></actions></button>
@@ -144,6 +144,7 @@ new_page = r"""<page name="partsdcard">
 <button style="button_third_width"><placement x="%btn3_col3_x%" y="%tw_mixed_buttons_y%"/><text>Load SD</text><actions><action function="cmd">/sbin/xz1c_mixed_sd_probe.sh</action><action function="page">partsdcard</action></actions></button>
 
 <action><touch key="back"/><action function="page">partsdcardsel</action></action>
+
 </page>"""
 
 match = re.search(
